@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chess Game Coach</title>
+<meta name="description" content="Move-by-move coaching review of Spryze713 vs jdparden, with better-move lines you can play out on the board.">
+<meta name="theme-color" content="#16181d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chess Coach">
+<style>
+  :root{
+    --bg:#16181d; --panel:#1f232b; --panel2:#272c36; --text:#e8e6e3; --muted:#9aa0aa;
+    --light:#ebd9b4; --dark:#b18862; --last:#f6e05e; --alt:#63b3ed;
+    --best:#48bb78; --good:#68d391; --book:#a0aec0; --inacc:#ecc94b; --mistake:#ed8936; --blunder:#f56565; --brill:#38b2ac;
+  }
+  *{box-sizing:border-box}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+  header{padding:14px 16px 6px;text-align:center}
+  header h1{font-size:1.15rem;margin:0}
+  header .sub{color:var(--muted);font-size:.85rem}
+  .wrap{max-width:1100px;margin:0 auto;padding:8px 12px 30px;display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:900px){.wrap{grid-template-columns:minmax(360px,520px) 1fr}}
+  .players{display:flex;justify-content:space-between;align-items:center;font-size:.9rem;padding:4px 2px;color:var(--muted)}
+  .players b{color:var(--text)}
+  .mat{font-size:.8rem;color:var(--muted)}
+  .boardbox{position:relative}
+  #board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1/1;border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.45);user-select:none}
+  .sq{position:relative;display:flex;align-items:center;justify-content:center}
+  .sq.l{background:var(--light)} .sq.d{background:var(--dark)}
+  .sq.hl::after{content:"";position:absolute;inset:0;background:var(--last);opacity:.45}
+  .sq.ha::after{content:"";position:absolute;inset:0;background:var(--alt);opacity:.55}
+  .sq.chk{background:radial-gradient(circle,#ff4d4d 0%,#e53e3e 35%,transparent 75%)}
+  .pc{position:relative;z-index:2;font-size:min(10.5vw,56px);line-height:1;font-family:"Segoe UI Symbol","DejaVu Sans","Noto Sans Symbols2","Arial Unicode MS",sans-serif}
+  .pc.w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 1px 1px #000}
+  .pc.b{color:#111;text-shadow:0 0 1px #fff,0 1px 0 rgba(255,255,255,.35)}
+  .coord{position:absolute;font-size:.62rem;font-weight:700;z-index:3;opacity:.8}
+  .coord.f{right:3px;bottom:1px} .coord.r{left:3px;top:1px}
+  .sq.l .coord{color:var(--dark)} .sq.d .coord{color:var(--light)}
+  .controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  button{background:var(--panel2);color:var(--text);border:1px solid #3a404c;border-radius:8px;padding:9px 12px;font-size:.95rem;cursor:pointer;flex:1;min-width:44px}
+  button:hover{background:#323846} button:disabled{opacity:.4;cursor:default}
+  button.primary{background:#2b6cb0;border-color:#2b6cb0} button.primary:hover{background:#2c5282}
+  input[type=range]{width:100%;margin-top:10px}
+  .panel{background:var(--panel);border-radius:10px;padding:14px}
+  .movehead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .movehead .mv{font-size:1.35rem;font-weight:700}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:700;color:#111}
+  .side{font-size:.8rem;color:var(--muted)}
+  .comment{margin:10px 0 6px}
+  .view{display:grid;gap:8px;grid-template-columns:1fr;margin-top:8px}
+  @media(min-width:560px){.view{grid-template-columns:1fr 1fr}}
+  .view div{background:var(--panel2);border-radius:8px;padding:9px 10px;font-size:.88rem}
+  .view h4{margin:0 0 4px;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .altbox{margin-top:12px;border-left:4px solid var(--alt);background:#1b2633;border-radius:6px;padding:10px 12px}
+  .altbox h3{margin:0 0 4px;font-size:.95rem;color:var(--alt)}
+  .altbox .line{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;margin:4px 0}
+  .varbar{display:none;margin-top:10px;background:#1b2633;border:1px solid #2b6cb0;border-radius:8px;padding:10px}
+  .varbar.on{display:block}
+  .varbar .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .chip{padding:3px 8px;border-radius:6px;background:#2a3a4f;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;cursor:pointer}
+  .chip.cur{background:var(--alt);color:#111;font-weight:700}
+  .movelist{display:grid;grid-template-columns:34px 1fr 1fr;gap:2px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;max-height:300px;overflow:auto;padding-right:4px}
+  .movelist .n{color:var(--muted);text-align:right;padding:3px 0}
+  .movelist .m{padding:3px 6px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;gap:4px}
+  .movelist .m:hover{background:var(--panel2)}
+  .movelist .m.cur{background:#3b4252;outline:1px solid #5a6375}
+  .ann{font-weight:700}
+  h2{font-size:1rem;margin:0 0 8px}
+  .phase{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .summary p,.summary li{font-size:.92rem}
+  .summary ul{padding-left:18px;margin:6px 0}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tabs button{flex:0 1 auto;padding:6px 12px;font-size:.85rem}
+  .tabs button.on{background:#2b6cb0;border-color:#2b6cb0}
+  .hidden{display:none}
+  .note{font-size:.78rem;color:var(--muted);margin-top:10px}
+  footer{text-align:center;color:var(--muted);font-size:.82rem;padding:10px 12px 26px}
+  footer a{color:#90cdf4;text-decoration:none} footer a:hover{text-decoration:underline}
+  #installBtn{display:none;margin:6px auto 0;flex:0 0 auto;padding:6px 14px;font-size:.85rem}
+  @media(display-mode:standalone){header{padding-top:18px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Spryze713 (735) vs jdparden (772) — 0-1</h1>
+  <div class="sub">Chess.com · 10 min · 22 Nov 2026 · Black wins by checkmate on move 29</div>
+  <button id="installBtn" class="primary">⬇ Install app</button>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: board -->
+  <div>
+    <div class="players" id="topPlayer"></div>
+    <div class="boardbox"><div id="board"></div></div>
+    <div class="players" id="botPlayer"></div>
+    <div class="controls">
+      <button id="bStart" title="Start">⏮</button>
+      <button id="bPrev" title="Previous">◀</button>
+      <button id="bNext" class="primary" title="Next">▶</button>
+      <button id="bEnd" title="End">⏭</button>
+      <button id="bFlip" title="Flip board">⇅ Flip</button>
+    </div>
+    <input type="range" id="slider" min="0" max="58" value="0">
+    <div class="varbar" id="varbar">
+      <div><b style="color:var(--alt)">Exploring the better line</b> <span class="side" id="varInfo"></span></div>
+      <div class="chips" id="varChips"></div>
+      <div class="controls" style="margin-top:4px">
+        <button id="vPrev">◀ Step</button>
+        <button id="vNext" class="primary">Step ▶</button>
+        <button id="vExit">↩ Back to game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: commentary -->
+  <div style="display:grid;gap:14px;align-content:start">
+    <div class="panel" id="coach"></div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button id="tMoves" class="on">Moves</button>
+        <button id="tSummary">Game summary</button>
+      </div>
+      <div id="paneMoves">
+        <div class="movelist" id="movelist"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div id="paneSummary" class="summary hidden">
+        <p><b>The short version:</b> both players spent the opening pushing pawns instead of developing pieces. White got the first big gift (your 12…axb5?? dropped the a8 rook when 12…Bxb5! won a whole knight). Then White handed material back with 19.Bxf5?. From there, Black's pawns on the e- and f-files plus the c6 bishop on the long diagonal did all the work, ending in a textbook mate with 29…Bg2#.</p>
+        <h2>Turning points</h2>
+        <ul>
+          <li><b>12.Bh3? / 12…axb5??</b> White left the b5 knight hanging; Black took it the wrong way and lost the a8 rook.</li>
+          <li><b>19.Bxf5?</b> White gave a bishop for one pawn. Material swung back to Black.</li>
+          <li><b>23.Qg5</b> White's only real threat of the game (Qg7#). Black defended well with 23…Nf5.</li>
+          <li><b>25.Rh3?!</b> White's rook took h3, the last free square for the g1 knight, which never moved all game.</li>
+          <li><b>27…e3+! 28…f2! 29…Bg2#</b> Pawns cleared the diagonal and took away escape squares, and the bishop finished it.</li>
+        </ul>
+        <h2>Lessons for Black (you)</h2>
+        <ul>
+          <li><b>Before recapturing, check every way to take.</b> 12…Bxb5 won a piece because the queen couldn't take back (a6 covered b5). 12…axb5 opened the a-file to your own rook.</li>
+          <li><b>Pawn moves open lines.</b> Whenever a pawn leaves a file or diagonal, look at what now points at your pieces.</li>
+          <li><b>Develop before you push.</b> By move 7 you had moved five pawns and no pieces. ...h5 and ...g6 also gave White the g5 square, which White's bishop and queen both used later.</li>
+          <li><b>Advanced pawns plus a long-diagonal bishop are a mating weapon.</b> You handled the finish perfectly.</li>
+        </ul>
+        <h2>Lessons for White</h2>
+        <ul>
+          <li>2.f3 and 4.h4 don't develop anything and weaken the king. 2.Nf3 is the natural move.</li>
+          <li>The g1 knight never moved. Undeveloped pieces don't defend, and in the end it was simply in the way of the king.</li>
+          <li>Early queen raids (9.Qa4+, 13.Qxa8) win material but leave the queen far from the king. Count what's left defending at home.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">Commentary is a hand-annotated coaching review, not an engine evaluation. All moves and alternative lines are checked for legality by the board's built-in move logic.</div>
+  </div>
+</div>
+
+<footer>
+  Parden Web Apps · <a href="mailto:jdparden@gmail.com">jdparden@gmail.com</a> ·
+  <a href="https://venmo.com/u/James-Parden" target="_blank" rel="noopener">☕ Donate via Venmo (@James-Parden)</a>
+</footer>
+<noscript><p style="text-align:center;color:#f56565">JavaScript is turned off for this page, so the board can't load.</p></noscript>
+<script>
+window.addEventListener('error',e=>{const c=document.getElementById('coach');if(c)c.innerHTML='<p style="color:#f56565">Something went wrong loading the board: '+(e.message||'unknown error')+'</p>';});
+</script>
+<script>
+/*ENGINE START*/
+const FILES='abcdefgh';
+const KN=[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+const KG=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+const DI=[[1,1],[1,-1],[-1,1],[-1,-1]], OR=[[1,0],[-1,0],[0,1],[0,-1]];
+const colorOf=p=>p?(p===p.toUpperCase()?'w':'b'):null;
+const sqName=i=>FILES[i%8]+((i>>3)+1);
+function initialState(){
+  const b=Array(64).fill(null);const back='RNBQKBNR';
+  for(let f=0;f<8;f++){b[f]=back[f];b[8+f]='P';b[48+f]='p';b[56+f]=back[f].toLowerCase();}
+  return {b,turn:'w',castle:{K:true,Q:true,k:true,q:true},ep:-1};
+}
+function cloneS(s){return {b:s.b.slice(),turn:s.turn,castle:{...s.castle},ep:s.ep};}
+function attacked(b,t,by){
+  const tf=t%8,tr=t>>3;
+  const pawn=by==='w'?'P':'p', d=by==='w'?1:-1;
+  for(const df of[-1,1]){const f=tf+df,r=tr-d;if(f>=0&&f<8&&r>=0&&r<8&&b[r*8+f]===pawn)return true;}
+  const N=by==='w'?'N':'n',K=by==='w'?'K':'k',B=by==='w'?'B':'b',R=by==='w'?'R':'r',Q=by==='w'?'Q':'q';
+  for(const[df,dr]of KN){const f=tf+df,r=tr+dr;if(f>=0&&f<8&&r>=0&&r<8&&b[r*8+f]===N)return true;}
+  for(const[df,dr]of KG){const f=tf+df,r=tr+dr;if(f>=0&&f<8&&r>=0&&r<8&&b[r*8+f]===K)return true;}
+  for(const[dirs,pcs]of[[DI,[B,Q]],[OR,[R,Q]]]){
+    for(const[df,dr]of dirs){let f=tf+df,r=tr+dr;
+      while(f>=0&&f<8&&r>=0&&r<8){const p=b[r*8+f];if(p){if(pcs.includes(p))return true;break;}f+=df;r+=dr;}}
+  }
+  return false;
+}
+function pseudo(s){
+  const m=[],b=s.b,me=s.turn,opp=me==='w'?'b':'w';
+  for(let i=0;i<64;i++){
+    const p=b[i];if(!p||colorOf(p)!==me)continue;
+    const f=i%8,r=i>>3,t=p.toUpperCase();
+    const add=(to,ex={})=>m.push(Object.assign({from:i,to,piece:t,capture:!!b[to]},ex));
+    if(t==='P'){
+      const d=me==='w'?1:-1,start=me==='w'?1:6,last=me==='w'?7:0,r1=r+d;
+      const pp=(to,ex)=>{if((to>>3)===last){for(const q of'QRBN')add(to,Object.assign({},ex,{promo:q}));}else add(to,ex);};
+      if(r1>=0&&r1<8&&!b[r1*8+f]){pp(r1*8+f,{});const r2=r+2*d;if(r===start&&!b[r2*8+f])add(r2*8+f,{double:true});}
+      for(const df of[-1,1]){const ff=f+df;if(ff<0||ff>7||r1<0||r1>7)continue;const to=r1*8+ff;
+        if(b[to]&&colorOf(b[to])===opp)pp(to,{});else if(to===s.ep)add(to,{ep:true,capture:true});}
+    }else if(t==='N'||t==='K'){
+      for(const[df,dr]of(t==='N'?KN:KG)){const ff=f+df,rr=r+dr;if(ff<0||ff>7||rr<0||rr>7)continue;const to=rr*8+ff;
+        if(!b[to]||colorOf(b[to])===opp)add(to);}
+      if(t==='K'){
+        const base=me==='w'?0:56,ks=me==='w'?'K':'k',qs=me==='w'?'Q':'q',R=me==='w'?'R':'r';
+        if(i===base+4&&!attacked(b,base+4,opp)){
+          if(s.castle[ks]&&b[base+7]===R&&!b[base+5]&&!b[base+6]&&!attacked(b,base+5,opp)&&!attacked(b,base+6,opp))add(base+6,{castle:'K'});
+          if(s.castle[qs]&&b[base]===R&&!b[base+1]&&!b[base+2]&&!b[base+3]&&!attacked(b,base+3,opp)&&!attacked(b,base+2,opp))add(base+2,{castle:'Q'});
+        }
+      }
+    }else{
+      const dirs=t==='B'?DI:t==='R'?OR:DI.concat(OR);
+      for(const[df,dr]of dirs){let ff=f+df,rr=r+dr;
+        while(ff>=0&&ff<8&&rr>=0&&rr<8){const to=rr*8+ff;if(b[to]){if(colorOf(b[to])===opp)add(to);break;}add(to);ff+=df;rr+=dr;}}
+    }
+  }
+  return m;
+}
+function make(s,mv){
+  const n=cloneS(s),b=n.b,p=b[mv.from];
+  b[mv.to]=mv.promo?(s.turn==='w'?mv.promo:mv.promo.toLowerCase()):p;b[mv.from]=null;
+  if(mv.ep)b[mv.to+(s.turn==='w'?-8:8)]=null;
+  if(mv.castle){const base=s.turn==='w'?0:56;
+    if(mv.castle==='K'){b[base+5]=b[base+7];b[base+7]=null;}else{b[base+3]=b[base];b[base]=null;}}
+  n.ep=mv.double?(mv.from+mv.to)/2:-1;
+  if(p==='K'){n.castle.K=n.castle.Q=false;} if(p==='k'){n.castle.k=n.castle.q=false;}
+  for(const[sq,k]of[[0,'Q'],[7,'K'],[56,'q'],[63,'k']])if(mv.from===sq||mv.to===sq)n.castle[k]=false;
+  n.turn=s.turn==='w'?'b':'w';
+  return n;
+}
+function legalMoves(s){
+  return pseudo(s).filter(mv=>{const n=make(s,mv);const k=n.b.indexOf(s.turn==='w'?'K':'k');return !attacked(n.b,k,n.turn);});
+}
+function inCheck(s){const k=s.b.indexOf(s.turn==='w'?'K':'k');return attacked(s.b,k,s.turn==='w'?'b':'w');}
+function sanBase(mv,all){
+  if(mv.castle)return mv.castle==='K'?'O-O':'O-O-O';
+  if(mv.piece==='P'){let x=mv.capture?FILES[mv.from%8]+'x'+sqName(mv.to):sqName(mv.to);if(mv.promo)x+='='+mv.promo;return x;}
+  let x=mv.piece;
+  const others=all.filter(o=>o.piece===mv.piece&&o.to===mv.to&&o.from!==mv.from);
+  if(others.length){
+    const sameF=others.some(o=>o.from%8===mv.from%8),sameR=others.some(o=>(o.from>>3)===(mv.from>>3));
+    if(!sameF)x+=FILES[mv.from%8];else if(!sameR)x+=((mv.from>>3)+1);else x+=sqName(mv.from);
+  }
+  if(mv.capture)x+='x';
+  return x+sqName(mv.to);
+}
+function playSan(s,str){
+  const clean=str.replace(/[+#!?]/g,'').replace(/0/g,'O');
+  const all=legalMoves(s);
+  const mv=all.find(m=>sanBase(m,all)===clean);
+  if(!mv)throw new Error('Illegal or unknown move: '+str);
+  const n=make(s,mv);
+  const chk=inCheck(n);
+  const suffix=chk?(legalMoves(n).length?'+':'#'):'';
+  return {state:n,mv,san:sanBase(mv,all)+suffix};
+}
+/*ENGINE END*/
+
+/*DATA START*/
+const GAME="e4 e5 f3 d6 c3 c5 h4 h5 Na3 b6 d3 g6 Bg5 Be7 Bxe7 Nxe7 Qa4+ Bd7 Nb5 O-O g3 a6 Bh3 axb5 Qxa8 Bc6 Qa3 c4 dxc4 bxc4 g4 hxg4 Bxg4 b5 b4 f5 Bxf5 gxf5 h5 fxe4 h6 Kh7 Qc1 exf3 Qg5 Nf5 Qxd8 Rxd8 Rh3 e4 Rd1 Rg8 Kf2 e3+ Kf1 f2 Ne2 Bg2#".split(' ');
+
+// q: book | good | best | excellent | forced | inaccuracy | mistake | blunder
+// c: commentary on the move; w / b: how White and Black should read the position now; alt: a better (or instructive) line from the position BEFORE this move
+const NOTES=[
+/*1 e4*/ {q:'book',phase:'Opening',c:'The most popular first move. It grabs the center and opens lines for the queen and the f1 bishop.',
+  w:'Plan: develop knights and bishops quickly, castle, fight for d4.',b:'Answer in the center. ...e5 or ...c5 are the main replies.'},
+/*1...e5*/ {q:'book',c:'A classical answer. Black claims an equal share of the center and frees the f8 bishop.',
+  w:'2.Nf3 hits e5 straight away. That is the main line.',b:'Plan: ...Nc6, ...Nf6, ...Bc5 or ...Be7, then castle.'},
+/*2 f3*/ {q:'inaccuracy',c:'2.f3 defends e4 but takes the best square away from the g1 knight and weakens the e1–h4 diagonal and the White king. That knight stays on g1 all game, and that is the root of White\'s trouble.',
+  w:'You now need a plan to develop the g1 knight (Ne2 or Nh3).',b:'White has weakened the dark squares around his king. A bishop on c5 aimed at g1 is very annoying now.',
+  alt:{line:['Nf3','Nc6','Bc4'],why:'Develop with tempo. Nf3 attacks e5, and Bc4 aims at f7. White would be developing pieces, not pawns.'}},
+/*2...d6*/ {q:'inaccuracy',c:'Solid, but passive. It shuts in the f8 bishop. White\'s 2.f3 asks for active play.',
+  w:'Black gave you time. Use it to develop.',b:'You could have punished 2.f3 with a developing move.',
+  alt:{line:['Bc5'],why:'The bishop takes the g1–a7 diagonal. With f3 played, White\'s king has no comfortable way to castle kingside, and the g1 knight can\'t use f3.'}},
+/*3 c3*/ {q:'inaccuracy',c:'This prepares d4, but it is another pawn move while every White piece is still at home.',
+  w:'Pieces first: Bc4 would be more useful.',b:'White is slow. Get your knights out.',
+  alt:{line:['Bc4'],why:'Develops the bishop toward f7, Black\'s weakest square, and gets White closer to castling.'}},
+/*3...c5*/ {q:'inaccuracy',c:'This leaves a big hole on d5 and makes d6 a backward pawn. Black has made three pawn moves and developed nothing.',
+  w:'The d5 square is now a permanent home for a White piece.',b:'Develop the kingside knight first. It helps you castle.',
+  alt:{line:['Nf6'],why:'Develops, attacks e4 (already a bit loose after f3), and prepares ...Be7 and ...O-O.'}},
+/*4 h4*/ {q:'mistake',c:'An edge pawn move that does nothing for development and loosens White\'s kingside even more.',
+  w:'Better: grab the center while Black is slow.',b:'White is wasting time. Punish it by developing fast.',
+  alt:{line:['Bc4','Nf6','Ne2'],why:'Two pieces out. The g1 knight goes to e2, its only good square after f3, and White is ready to castle.'}},
+/*4...h5*/ {q:'mistake',c:'Copying the opponent. It stops h5, but it gives up control of g5 for good, and later White uses g5 for both the bishop (7.Bg5) and the queen (23.Qg5).',
+  w:'Note the g5 square. It is now a strong outpost for your pieces.',b:'Every pawn move leaves squares behind. Think about which squares you can no longer cover.',
+  alt:{line:['Nf6'],why:'Develops, pressures e4, and prepares castling. Black\'s pieces would be ahead of White\'s.'}},
+/*5 Na3*/ {q:'inaccuracy',c:'"A knight on the rim is dim." Na3 does eye b5 and c4, and White does use b5 later, but c3 is taken by a pawn, so the knight has few squares.',
+  w:'The bishop on f1 and the knight on g1 still need to come out.',b:'Watch the b5 square. ...a6 would take it away.',
+  alt:{line:['Bc4'],why:'Bishops before knights on the rim. Bc4 is active and prepares Ne2 and O-O.'}},
+/*5...b6*/ {q:'inaccuracy',c:'Another pawn move. It prepares ...Bb7, but Black never plays that bishop to b7.',
+  w:'Black has moved five pawns. You can still take the lead in development.',b:'Your queenside pieces want squares, not more pawn moves.',
+  alt:{line:['Nc6'],why:'Natural development. The knight covers d4 and b4 and gets Black closer to castling.'}},
+/*6 d3*/ {q:'ok',c:'This opens the c1 bishop. Reasonable, though it locks in the f1 bishop a little.',
+  w:'Next: get the c1 bishop out. Bg5 uses the hole Black just created.',b:'Expect Bg5. Have ...Be7 or ...f6 ready.'},
+/*6...g6*/ {q:'inaccuracy',c:'With ...h5 already played, ...g6 weakens f6 and h6 and loosens the kingside before you have castled.',
+  w:'Black\'s dark squares (f6, g5, h6) are now soft targets.',b:'Develop the kingside pieces and castle, rather than adding pawn moves.',
+  alt:{line:['Nf6'],why:'Development first. The knight also guards h5 and g4 and keeps White\'s queen and bishop away from the kingside.'}},
+/*7 Bg5*/ {q:'good',c:'Good. The bishop develops onto the g5 hole and offers to trade off Black\'s dark-squared bishop, which is Black\'s best defender of the weak dark squares.',
+  w:'Trading dark-squared bishops makes Black\'s f6/h6 holes worse.',b:'Challenge the bishop with ...Be7 or ...f6.'},
+/*7...Be7*/ {q:'good',c:'Correct. It challenges the bishop and develops. Note that ...Qxg5 doesn\'t work, because hxg5 takes back.',
+  w:'Trading is reasonable, but don\'t give up development time.',b:'After a trade, recapture with a piece that develops.'},
+/*8 Bxe7*/ {q:'ok',c:'This trades White\'s only developed piece. Not bad, but White is now back to zero developed pieces.',
+  w:'Keeping tension with a developing move like Ne2 was also possible.',b:'You recapture with development. That gives you a small lead.',
+  alt:{line:['Ne2'],why:'Develops the problem knight, its only decent square after f3, and keeps the bishop pair options open.'}},
+/*8...Nxe7*/ {q:'good',c:'Fine. The recapture develops the kingside knight and clears the way to castle. ...Qxe7 was also fine.',
+  w:'The d7 and e8 squares are open. Qa4+ is now possible.',b:'Castle soon. Your king is still in the center.'},
+/*9 Qa4+*/ {q:'inaccuracy',c:'An early queen check. It gains nothing concrete, and the queen will later become a target on the a4–e8 diagonal.',
+  w:'Better to develop and castle, keeping the queen safe.',b:'Block with a move that develops or attacks the queen.',
+  alt:{line:['Ne2'],why:'Development first. The queen check can wait until it actually wins something.'}},
+/*9...Bd7*/ {q:'good',c:'Good. It blocks the check, develops, and the bishop now attacks the queen on a4 (d7–c6–b5–a4).',
+  w:'Your queen is attacked. Move it or block.',b:'White must spend another tempo on the queen.'},
+/*10 Nb5*/ {q:'inaccuracy',c:'This blocks the bishop\'s attack on the queen. But the knight is now stuck: if it ever moves, ...Bxa4 wins the queen. Pieces tied down like this can be targeted.',
+  w:'Simplest was to step the queen away to safety.',b:'Can you attack the b5 knight? It can\'t run without exposing the queen.',
+  alt:{line:['Qc2'],why:'The queen steps back with no pins or ties. Black\'s ...a6 idea then has no target.'}},
+/*10...O-O*/ {q:'ok',c:'Natural and safe: the king gets out of the center. ...a6 right away was also interesting, but with White\'s queen on the a-file, ...axb5 would always open the file to your a8 rook. Keep that in mind.',
+  w:'Black\'s king is safe. Your knight on b5 is now the main worry.',b:'The b5 knight is tied to the a4 queen. That is a target.',
+  alt:{line:['Nbc6'],why:'Develops the last minor piece and connects the rooks. Castling can follow next move.'}},
+/*11 g3*/ {q:'inaccuracy',c:'This prepares Bh3 to attack the d7 bishop, but it does nothing about the coming ...a6.',
+  w:'Your knight on b5 needs protection or an escape before ...a6.',b:'Now ...a6 is strong.',
+  alt:{line:['c4'],why:'Gives the b5 knight a pawn defender, so ...a6 and ...Bxb5 lead to only an even trade.'}},
+/*11...a6*/ {q:'good',c:'Strong. It attacks the knight. The knight can\'t move (that uncovers ...Bxa4), and ...Bxb5 is now threatened, because if Qxb5 then ...axb5 wins the queen.',
+  w:'Only 12.c4 holds everything (12...Bxb5 13.cxb5, an even trade).',b:'Next move, take on b5 with the BISHOP, not the pawn.'},
+/*12 Bh3*/ {q:'blunder',c:'This ignores the threat. Bh3 attacks the d7 bishop, but Black can simply take the b5 knight with that bishop, and White can\'t recapture.',
+  w:'12.c4 was the only move that held.',b:'Free piece available: 12...Bxb5!',
+  alt:{line:['c4','Bxb5','cxb5'],why:'c4 defends the knight. After ...Bxb5 cxb5 material is even, and the b5 pawn even cramps Black.'}},
+/*12...axb5*/ {q:'blunder',c:'The wrong capture. Taking with the pawn opens the a-file, and White\'s queen on a4 now looks straight at your rook on a8. Black wins a knight but loses a rook (down the exchange, about 2 points).',
+  w:'Qxa8 wins the rook.',b:'Before any capture, ask: what line does this open?',
+  alt:{line:['Bxb5','Qc2'],why:'12...Bxb5! wins a clean knight. 13.Qxb5 is impossible (13...axb5 takes the queen), and the a6 pawn still blocks the a-file, so your rook stays safe.'}},
+/*13 Qxa8*/ {q:'best',c:'White takes the free rook. But the queen is now deep in Black\'s camp and could get trapped.',
+  w:'Get the queen out before ...Bc6 traps it.',b:'Can you trap the queen? ...Bc6 attacks it.'},
+/*13...Bc6*/ {q:'good',c:'Good. It attacks the queen and nearly traps it. 14.Qxb8 loses to 14...Qxb8. White has to spend a tempo retreating.',
+  w:'Qa3 or Qa7 are the only safe squares.',b:'Black is down the exchange, but you have the initiative. Keep developing with tempo.'},
+/*14 Qa3*/ {q:'best',c:'The queen escapes. White is up the exchange (rook for knight), but still has only one piece developed besides the queen.',
+  w:'Now finally develop: Ne2, castle.',b:'Use the time while the queen is offside.'},
+/*14...c4*/ {q:'inaccuracy',c:'This hits d3 and gains space, but it is another pawn move while the b8 knight is still home.',
+  w:'You can trade on c4 or ignore it and develop.',b:'When you\'re down material, activity is everything. Bring the last pieces in.',
+  alt:{line:['Nd7'],why:'Develops the last minor piece, heading to f6 to hit e4, and prepares ...f5 to open the f-file for your rook.'}},
+/*15 dxc4*/ {q:'ok',c:'This trades a pawn and opens the d-file. Fine.',
+  w:'Your queen and rook could use the d-file later.',b:'Recapture and keep pressing.'},
+/*15...bxc4*/ {q:'ok',c:'A natural recapture. The c4 pawn now cramps White\'s queenside.',
+  w:'Time to develop the g1 knight and castle.',b:'Your pawn chain points at White\'s queenside.'},
+/*16 g4*/ {q:'mistake',c:'Opening lines around your own uncastled king while the g1 knight is still asleep. White wants to open the h-file, but it costs time and safety.',
+  w:'Castling was available after Ne2. That was much safer.',b:'White\'s king is staying in the center. Open lines toward it.',
+  alt:{line:['Ne2','Nd7','O-O'],why:'The knight finally develops, and White castles to safety. Since the f1 bishop and g1 knight have both left, the way is clear.'}},
+/*16...hxg4*/ {q:'good',c:'Take the pawn. It removes White\'s pawn-storm material.',
+  w:'Recapture with the bishop or the f-pawn.',b:'The h-file is half open, so watch White\'s Rh1.'},
+/*17 Bxg4*/ {q:'ok',c:'This recaptures and points the h-file rook at Black\'s king. 17.fxg4 was also possible.',
+  w:'Idea: h5 and h6 to pry open Black\'s king.',b:'The bishop on g4 can be hit by ...f5.'},
+/*17...b5*/ {q:'inaccuracy',c:'This supports c4 but is slow. Your b8 knight still hasn\'t moved.',
+  w:'Time to develop. Black is building but not developing.',b:'...f5 or ...Nd7 would be more active.',
+  alt:{line:['Nd7'],why:'Development. The knight heads to f6 or b6 and connects your queen to the kingside.'}},
+/*18 b4*/ {q:'inaccuracy',c:'This fixes Black\'s queenside pawns, but it is one more pawn move instead of developing. It also allows ...cxb3 en passant.',
+  w:'Ne2 and getting the king safe was the priority.',b:'Look for active ideas: ...f5 hits the g4 bishop.',
+  alt:{line:['Ne2'],why:'Develops the last minor piece and prepares to castle or to centralize with Nd4.'}},
+/*18...f5*/ {q:'good',c:'Strong. It attacks the g4 bishop with tempo and starts opening the f-file for your rook. That pawn eventually becomes the mating pawn on f2.',
+  w:'Retreat the bishop (Bh3/Be2) or trade with exf5.',b:'You are opening lines toward White\'s king.'},
+/*19 Bxf5*/ {q:'blunder',c:'This gives a whole bishop for one pawn. There\'s no follow-up, because ...gxf5 simply takes it, and the material balance swings back to Black.',
+  w:'The bishop had to retreat. 19.Bh3 kept everything.',b:'Take it! A free piece.',
+  alt:{line:['Bh3'],why:'The bishop stays safe and keeps an eye on the long h3–c8 diagonal. White stays up the exchange.'}},
+/*19...gxf5*/ {q:'best',c:'Correct. Black is now up a minor piece for the exchange (B + N vs R), with strong central pawns.',
+  w:'You need activity: push h5–h6 and look for queen threats on g7.',b:'Now trade into an endgame or push the pawns.'},
+/*20 h5*/ {q:'ok',c:'Aggressive: White aims for h6 and threats on g7 with the queen. It is White\'s only real counterplay.',
+  w:'Combine h6 with Qc1–g5 for Qg7#.',b:'Watch the g7 square once a pawn reaches h6.',
+  alt:{line:['Ne2'],why:'Finally developing the knight first would make any attack much stronger, and the knight wouldn\'t get stuck later.'}},
+/*20...fxe4*/ {q:'good',c:'Good. It wins a pawn and pries open f3. Your pawns now roll toward White\'s king.',
+  w:'Black\'s pawns are getting dangerous. Blockade them.',b:'f3 is the next target.'},
+/*21 h6*/ {q:'ok',c:'The pawn reaches h6, covering g7. Now any White queen reaching g7 with support could be mate.',
+  w:'Qc1–g5 is the idea.',b:'Keep your king where it guards g7 and h7.'},
+/*21...Kh7*/ {q:'good',c:'Good. The king blockades the h-pawn and guards g7, so h7+ is impossible.',
+  w:'Bring the queen over: Qc1–g5.',b:'Expect Qg5 hitting g7.'},
+/*22 Qc1*/ {q:'good',c:'Good idea. The queen reroutes along c1–g5 to aim at g7. This is White\'s most dangerous plan of the game.',
+  w:'Threat: Qg5, then Qg7#.',b:'Stop the Qg5–g7 idea in advance.'},
+/*22...exf3*/ {q:'inaccuracy',c:'The pawn is very dangerous on f3, but it allows Qg5 with a mate threat. You defended in time, but it was worth spending a move to stop it first.',
+  w:'Qg5! threatens Qg7#.',b:'Always check your opponent\'s threats before grabbing.',
+  alt:{line:['Nf5'],why:'The knight covers g7 and attacks the h6 pawn. That stops White\'s only attacking idea before it starts, and your pawns can roll later.'}},
+/*23 Qg5*/ {q:'good',c:'White\'s best try: it threatens Qg7#, because the h6 pawn protects g7 and Black\'s king would have no escape.',
+  w:'If Black misses this, it\'s mate.',b:'You must cover g7 now.'},
+/*23...Nf5*/ {q:'good',c:'Good defense. The knight covers g7 and attacks h6. It does open the d8–g5 diagonal, so queens get traded, but trading queens while you\'re ahead and have an advanced passed pawn is a good deal.',
+  w:'Trade queens or lose time. Qxd8 is best.',b:'Endgame ahead. Your extra minor piece and the f3 pawn should win.',
+  alt:{line:['Rg8'],why:'Also good: the rook covers g7 AND attacks the queen on g5, which keeps queens on with tempo.'}},
+/*24 Qxd8*/ {q:'best',c:'Forced. White\'s queen was attacked by Black\'s queen, and trading is the best option.',
+  w:'Now try to blockade and win the f3 pawn.',b:'Recapture and activate the rook.'},
+/*24...Rxd8*/ {q:'forced',c:'Recapture. Material: Black has R + B + 2N vs White\'s 2R + N, and Black has passed pawns on e5/f3 aimed at White\'s king.',
+  w:'Your g1 knight has to come out NOW.',b:'Push ...e4 to support f3.'},
+/*25 Rh3*/ {q:'mistake',c:'This attacks f3, but it takes the h3 square, the g1 knight\'s last free square. Ne2 is impossible (f3 pawn), and f3 is taken by a pawn. The knight is now buried.',
+  w:'Always ask: where will my worst piece go?',b:'White\'s knight is entombed. You\'re effectively a piece up.',
+  alt:{line:['Nh3'],why:'Gets the knight out while it can, toward f2 or g5, where it can help fight Black\'s e- and f-pawns.'}},
+/*25...e4*/ {q:'good',c:'Good. It supports the f3 pawn, frees the c6 bishop\'s diagonal, and prepares ...e3.',
+  w:'The e4–f3 chain is a wedge right into your position.',b:'Next: ...e3 and ...f2 ideas.'},
+/*26 Rd1*/ {q:'ok',c:'This takes the open d-file, but it doesn\'t address the pawns.',
+  w:'Defending the 2nd rank (Rh2) or bringing the king to blockade is more urgent.',b:'Activate your rook toward the g-file.'},
+/*26...Rg8*/ {q:'good',c:'Good. The rook takes the open g-file and controls g2 and g1. That will be crucial for the mate.',
+  w:'The g-file and the long diagonal are both pointing at your king.',b:'Combine ...e3, ...f2 and ...Bg2.'},
+/*27 Kf2*/ {q:'mistake',c:'This tries to blockade, but the king walks into ...e3+ with tempo.',
+  w:'Rh2, guarding the 2nd rank and the g2 square, was more resilient.',b:'Check! ...e3+ drives the king back.',
+  alt:{line:['Rh2'],why:'The rook guards g2 and f2 along the 2nd rank, so the ...f2 and ...Bg2 ideas lose their bite.'}},
+/*27...e3+*/ {q:'excellent',c:'Excellent. It checks with tempo, and the e-pawn moving off e4 clears the long diagonal for the c6 bishop all the way to g2. e3 is protected by the f5 knight.',
+  w:'Kxe3 and Kxf3 are both illegal (protected). Only Ke1 or Kf1.',b:'Now ...f2 sets up the mating net.'},
+/*28 Kf1*/ {q:'forced',c:'One of only two legal king moves. Ke1 was no better: 28...f2+ also wins (for example 29.Ke2 fxg1=Q).',
+  w:'The position is already lost.',b:'...f2! takes away e1 and g1.'},
+/*28...f2*/ {q:'excellent',c:'Excellent. The pawn covers e1 and g1 and is protected by e3. It threatens both ...Bg2# and ...fxg1=Q.',
+  w:'Rh2 stops the mate, but ...fxg1=Q+ still wins.',b:'Look for the mate on g2.'},
+/*29 Ne2*/ {q:'blunder',c:'The knight finally moves, on move 29, but it doesn\'t cover g2. Mate in one. The game was lost anyway.',
+  w:'29.Rh2 stopped mate but loses to 29...fxg1=Q+.',b:'Bg2 is mate!',
+  alt:{line:['Rh2','fxg1=Q+'],why:'The rook covers g2, but the f2 pawn captures the g1 knight and promotes with check. The new queen is protected by the g8 rook. Hopeless for White.'}},
+/*29...Bg2#*/ {q:'excellent',c:'Checkmate! The bishop checks from g2 down the cleared long diagonal. g2 is protected by the g8 rook; e1 and g1 are covered by the f2 pawn; f2 is protected by e3; e2 is blocked by White\'s own knight. A textbook pawn-and-bishop mating net.',
+  w:'An undeveloped knight and an open king cost the game.',b:'Beautiful finish. Every Black unit took part.'}
+];
+/*DATA END*/
+
+const Q={
+  book:{label:'Book',ann:'',col:'var(--book)'},
+  ok:{label:'OK',ann:'',col:'var(--book)'},
+  good:{label:'Good',ann:'!',col:'var(--good)'},
+  best:{label:'Best',ann:'',col:'var(--best)'},
+  forced:{label:'Forced',ann:'',col:'var(--book)'},
+  excellent:{label:'Excellent',ann:'!!',col:'var(--brill)'},
+  inaccuracy:{label:'Inaccuracy',ann:'?!',col:'var(--inacc)'},
+  mistake:{label:'Mistake',ann:'?',col:'var(--mistake)'},
+  blunder:{label:'Blunder',ann:'??',col:'var(--blunder)'}
+};
+const GLYPH={K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟︎'};
+const VAL={P:1,N:3,B:3,R:5,Q:9,K:0};
+
+// Build the game positions
+const positions=[initialState()], played=[];
+{let s=positions[0];for(const m of GAME){const r=playSan(s,m);played.push(r);s=r.state;positions.push(s);}}
+
+// Build variations (from the position before each move)
+const variations=NOTES.map((n,i)=>{
+  if(!n.alt)return null;
+  const states=[positions[i]],res=[];let s=positions[i];
+  for(const m of n.alt.line){const r=playSan(s,m);res.push(r);s=r.state;states.push(s);}
+  return {states,res};
+});
+
+function moveLabel(i,san){ // i = 0-based ply
+  const num=Math.floor(i/2)+1;return i%2===0?num+'. '+san:num+'... '+san;
+}
+
+let ply=0, flipped=true, varMode=null; // varMode: {ply, idx}
+
+function renderBoard(state,hlFrom,hlTo,altMode){
+  const el=document.getElementById('board');el.innerHTML='';
+  const chk=inCheck(state)?state.b.indexOf(state.turn==='w'?'K':'k'):-1;
+  for(let row=0;row<8;row++)for(let col=0;col<8;col++){
+    const r=flipped?row:7-row,f=flipped?7-col:col,i=r*8+f;
+    const d=document.createElement('div');
+    d.className='sq '+((r+f)%2===0?'d':'l');
+    if(i===hlFrom||i===hlTo)d.classList.add(altMode?'ha':'hl');
+    if(i===chk)d.classList.add('chk');
+    const p=state.b[i];
+    if(p){const s=document.createElement('span');s.className='pc '+colorOf(p);s.textContent=GLYPH[p.toUpperCase()];d.appendChild(s);}
+    if(row===7){const c=document.createElement('span');c.className='coord f';c.textContent=FILES[f];d.appendChild(c);}
+    if(col===0){const c=document.createElement('span');c.className='coord r';c.textContent=r+1;d.appendChild(c);}
+    el.appendChild(d);
+  }
+  // material
+  let w=0,b=0;const capW=[],capB=[];
+  const start={P:8,N:2,B:2,R:2,Q:1};
+  const cnt={};for(const p of state.b)if(p)cnt[p]=(cnt[p]||0)+1;
+  for(const t of'QRBNP'){
+    const wm=start[t]-(cnt[t]||0),bm=start[t]-(cnt[t.toLowerCase()]||0);
+    for(let k=0;k<bm;k++)capW.push(GLYPH[t]); // white has captured black pieces
+    for(let k=0;k<wm;k++)capB.push(GLYPH[t]);
+    w+=(cnt[t]||0)*VAL[t];b+=(cnt[t.toLowerCase()]||0)*VAL[t];
+  }
+  const diff=w-b;
+  const wLine=`<span><b>Spryze713</b> (White) · 735</span><span class="mat">${capW.join('')} ${diff>0?'+'+diff:''}</span>`;
+  const bLine=`<span><b>jdparden</b> (Black) · 772</span><span class="mat">${capB.join('')} ${diff<0?'+'+(-diff):''}</span>`;
+  document.getElementById('topPlayer').innerHTML=flipped?wLine:bLine;
+  document.getElementById('botPlayer').innerHTML=flipped?bLine:wLine;
+}
+
+function renderCoach(){
+  const box=document.getElementById('coach');
+  if(ply===0){
+    box.innerHTML=`<div class="phase">Start</div><div class="movehead"><span class="mv">Starting position</span></div>
+    <p class="comment">Step through the game with ▶ (or the arrow keys). Each move gets a quality rating, an explanation, and a note on what <b>White</b> and <b>Black</b> should be thinking. Where there was a better move, tap <b>“Show on board”</b> to play it out.</p>
+    <p class="comment">The board is shown from Black's side (your side). Use ⇅ Flip to switch.</p>`;
+    return;
+  }
+  const i=ply-1,n=NOTES[i],q=Q[n.q],side=i%2===0?'White · Spryze713':'Black · jdparden';
+  let phase=i<24?'Opening':i<40?'Middlegame':'Endgame';
+  let html=`<div class="phase">${phase} · move ${Math.floor(i/2)+1}</div>
+  <div class="movehead"><span class="mv">${moveLabel(i,played[i].san)}${q.ann}</span>
+  <span class="badge" style="background:${q.col}">${q.label}</span><span class="side">${side}</span></div>
+  <p class="comment">${n.c}</p>
+  <div class="view"><div><h4>⚪ White's view</h4>${n.w}</div><div><h4>⚫ Black's view</h4>${n.b}</div></div>`;
+  if(n.alt){
+    const v=variations[i];
+    const startPly=i;
+    const lineTxt=v.res.map((r,k)=>{const p=startPly+k;const num=Math.floor(p/2)+1;
+      return (p%2===0?num+'. ':(k===0?num+'... ':''))+r.san;}).join(' ');
+    const better=['inaccuracy','mistake','blunder'].includes(n.q)?'Better was':'Also possible';
+    html+=`<div class="altbox"><h3>💡 ${better}</h3><div class="line">${lineTxt}</div><div>${n.alt.why}</div>
+      <div class="controls"><button class="primary" id="showAlt">Show on board</button></div></div>`;
+  }
+  box.innerHTML=html;
+  const b=document.getElementById('showAlt');if(b)b.onclick=()=>enterVar(i);
+}
+
+function renderList(){
+  const el=document.getElementById('movelist');el.innerHTML='';
+  for(let i=0;i<played.length;i+=2){
+    const n=document.createElement('div');n.className='n';n.textContent=(i/2+1)+'.';el.appendChild(n);
+    for(const j of[i,i+1]){
+      const d=document.createElement('div');
+      if(j<played.length){
+        const q=Q[NOTES[j].q];d.className='m'+(ply===j+1?' cur':'');
+        d.innerHTML=`<span>${played[j].san}<span class="ann" style="color:${q.col}">${q.ann}</span></span>${NOTES[j].alt&&['inaccuracy','mistake','blunder'].includes(NOTES[j].q)?'<span title="Better move available" style="color:var(--alt)">💡</span>':''}`;
+        d.onclick=()=>{exitVar();ply=j+1;render();};
+      }
+      el.appendChild(d);
+    }
+  }
+  const cur=el.querySelector('.cur');if(cur){const t=cur.offsetTop-el.offsetTop;if(t<el.scrollTop||t+cur.offsetHeight>el.scrollTop+el.clientHeight)el.scrollTop=t-el.clientHeight/2;}
+}
+
+function enterVar(i){varMode={ply:i,idx:1};render();}
+function exitVar(){varMode=null;}
+
+function renderVar(){
+  const bar=document.getElementById('varbar');
+  if(!varMode){bar.classList.remove('on');return;}
+  bar.classList.add('on');
+  const v=variations[varMode.ply],chips=document.getElementById('varChips');chips.innerHTML='';
+  v.res.forEach((r,k)=>{const p=varMode.ply+k;const c=document.createElement('span');
+    c.className='chip'+(varMode.idx===k+1?' cur':'');c.textContent=moveLabel(p,r.san);
+    c.onclick=()=>{varMode.idx=k+1;render();};chips.appendChild(c);});
+  document.getElementById('varInfo').textContent=`instead of ${moveLabel(varMode.ply,played[varMode.ply].san)}`;
+  document.getElementById('vPrev').disabled=varMode.idx<=0;
+  document.getElementById('vNext').disabled=varMode.idx>=v.res.length;
+}
+
+function render(){
+  if(varMode){
+    const v=variations[varMode.ply],st=v.states[varMode.idx];
+    const mv=varMode.idx>0?v.res[varMode.idx-1].mv:null;
+    renderBoard(st,mv?mv.from:-1,mv?mv.to:-1,true);
+  }else{
+    const mv=ply>0?played[ply-1].mv:null;
+    renderBoard(positions[ply],mv?mv.from:-1,mv?mv.to:-1,false);
+  }
+  renderCoach();renderVar();renderList();
+  document.getElementById('slider').value=ply;
+  document.getElementById('bPrev').disabled=ply===0&&!varMode;
+  document.getElementById('bNext').disabled=ply===played.length&&!varMode;
+}
+
+function go(n){exitVar();ply=Math.max(0,Math.min(played.length,n));render();}
+document.getElementById('bStart').onclick=()=>go(0);
+document.getElementById('bPrev').onclick=()=>go(ply-1);
+document.getElementById('bNext').onclick=()=>go(ply+1);
+document.getElementById('bEnd').onclick=()=>go(played.length);
+document.getElementById('bFlip').onclick=()=>{flipped=!flipped;render();};
+document.getElementById('slider').oninput=e=>go(+e.target.value);
+document.getElementById('vPrev').onclick=()=>{if(varMode&&varMode.idx>0){varMode.idx--;render();}};
+document.getElementById('vNext').onclick=()=>{if(varMode&&varMode.idx<variations[varMode.ply].res.length){varMode.idx++;render();}};
+document.getElementById('vExit').onclick=()=>{exitVar();render();};
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){if(varMode)document.getElementById('vNext').click();else go(ply+1);}
+  else if(e.key==='ArrowLeft'){if(varMode)document.getElementById('vPrev').click();else go(ply-1);}
+  else if(e.key==='Escape'&&varMode){exitVar();render();}
+});
+const tabs=[['tMoves','paneMoves'],['tSummary','paneSummary']];
+tabs.forEach(([t,p])=>document.getElementById(t).onclick=()=>{tabs.forEach(([t2,p2])=>{document.getElementById(t2).classList.toggle('on',t2===t);document.getElementById(p2).classList.toggle('hidden',p2!==p);});});
+document.getElementById('legend').innerHTML=['excellent','good','inaccuracy','mistake','blunder'].map(k=>`<span class="badge" style="background:${Q[k].col}">${Q[k].label} ${Q[k].ann}</span>`).join('');
+render();
+
+// ---- PWA: offline support + install button ----
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+let deferredPrompt=null;
+const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.style.display='block';});
+installBtn.onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(_){}deferredPrompt=null;installBtn.style.display='none';};
+window.addEventListener('appinstalled',()=>{installBtn.style.display='none';});
+</script>
+</body>
+</html>
