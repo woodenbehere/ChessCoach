@@ -1,6 +1,6 @@
 // Chess Game Coach service worker: caches the app so it works offline.
 // Bump CACHE_VERSION whenever you change any file so phones pick up the update.
-const CACHE_VERSION = 'chess-coach-v1';
+const CACHE_VERSION = 'chess-coach-v2';
 const ASSETS = [
   './',
   './index.html',

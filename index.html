@@ -25,18 +25,32 @@
   header h1{font-size:1.15rem;margin:0}
   header .sub{color:var(--muted);font-size:.85rem}
   .wrap{max-width:1100px;margin:0 auto;padding:8px 12px 30px;display:grid;gap:14px;grid-template-columns:1fr}
-  @media(min-width:900px){.wrap{grid-template-columns:minmax(360px,520px) 1fr}}
+  /* Side-by-side: board left, commentary right. Board is sized to fit the screen height. */
+  :root{--bw:min(520px,calc(100vh - 210px),56vw);--bw:min(520px,calc(100dvh - 210px),56vw)}
+  @media (orientation:landscape) and (min-width:560px), (min-width:900px){
+    .wrap{grid-template-columns:max(220px,var(--bw)) minmax(0,1fr);max-width:1400px;align-items:start}
+    .left{position:sticky;top:8px}
+  }
+  /* Phone held sideways: compact header and controls so the board gets the room */
+  @media (orientation:landscape) and (max-height:600px){
+    :root{--bw:min(520px,calc(100vh - 150px),56vw);--bw:min(520px,calc(100dvh - 150px),56vw)}
+    header{padding:4px 12px 0} header h1{font-size:.92rem} header .sub{display:none}
+    .wrap{padding-top:4px;gap:12px}
+    .players{padding:2px;font-size:.78rem}
+    .left .controls{margin-top:6px;gap:4px} .left .controls button{padding:5px 6px;font-size:.85rem}
+    .left input[type=range]{margin-top:6px}
+  }
   .players{display:flex;justify-content:space-between;align-items:center;font-size:.9rem;padding:4px 2px;color:var(--muted)}
   .players b{color:var(--text)}
   .mat{font-size:.8rem;color:var(--muted)}
-  .boardbox{position:relative}
+  .boardbox{position:relative;container-type:inline-size}
   #board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1/1;border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.45);user-select:none}
   .sq{position:relative;display:flex;align-items:center;justify-content:center}
   .sq.l{background:var(--light)} .sq.d{background:var(--dark)}
   .sq.hl::after{content:"";position:absolute;inset:0;background:var(--last);opacity:.45}
   .sq.ha::after{content:"";position:absolute;inset:0;background:var(--alt);opacity:.55}
   .sq.chk{background:radial-gradient(circle,#ff4d4d 0%,#e53e3e 35%,transparent 75%)}
-  .pc{position:relative;z-index:2;font-size:min(10.5vw,56px);line-height:1;font-family:"Segoe UI Symbol","DejaVu Sans","Noto Sans Symbols2","Arial Unicode MS",sans-serif}
+  .pc{position:relative;z-index:2;font-size:min(10.5vw,56px);font-size:10cqw;line-height:1;font-family:"Segoe UI Symbol","DejaVu Sans","Noto Sans Symbols2","Arial Unicode MS",sans-serif}
   .pc.w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 1px 1px #000}
   .pc.b{color:#111;text-shadow:0 0 1px #fff,0 1px 0 rgba(255,255,255,.35)}
   .coord{position:absolute;font-size:.62rem;font-weight:700;z-index:3;opacity:.8}
@@ -60,7 +74,7 @@
   .altbox{margin-top:12px;border-left:4px solid var(--alt);background:#1b2633;border-radius:6px;padding:10px 12px}
   .altbox h3{margin:0 0 4px;font-size:.95rem;color:var(--alt)}
   .altbox .line{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;margin:4px 0}
-  .varbar{display:none;margin-top:10px;background:#1b2633;border:1px solid #2b6cb0;border-radius:8px;padding:10px}
+  .varbar{display:none;background:#1b2633;border:1px solid #2b6cb0;border-radius:8px;padding:10px}
   .varbar.on{display:block}
   .varbar .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
   .chip{padding:3px 8px;border-radius:6px;background:#2a3a4f;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;cursor:pointer}
@@ -96,7 +110,7 @@
 
 <div class="wrap">
   <!-- LEFT: board -->
-  <div>
+  <div class="left">
     <div class="players" id="topPlayer"></div>
     <div class="boardbox"><div id="board"></div></div>
     <div class="players" id="botPlayer"></div>
@@ -108,6 +122,10 @@
       <button id="bFlip" title="Flip board">⇅ Flip</button>
     </div>
     <input type="range" id="slider" min="0" max="58" value="0">
+  </div>
+
+  <!-- RIGHT: commentary -->
+  <div class="right" style="display:grid;gap:14px;align-content:start;min-width:0">
     <div class="varbar" id="varbar">
       <div><b style="color:var(--alt)">Exploring the better line</b> <span class="side" id="varInfo"></span></div>
       <div class="chips" id="varChips"></div>
@@ -117,10 +135,6 @@
         <button id="vExit">↩ Back to game</button>
       </div>
     </div>
-  </div>
-
-  <!-- RIGHT: commentary -->
-  <div style="display:grid;gap:14px;align-content:start">
     <div class="panel" id="coach"></div>
 
     <div class="panel">
