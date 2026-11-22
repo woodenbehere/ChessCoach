@@ -44,8 +44,8 @@
   .players b{color:var(--text)}
   .mat{font-size:.8rem;color:var(--muted)}
   .boardbox{position:relative;container-type:inline-size}
-  #board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1/1;border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.45);user-select:none}
-  .sq{position:relative;display:flex;align-items:center;justify-content:center}
+  #board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));width:100%;aspect-ratio:1/1;border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.45);user-select:none}
+  .sq{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;aspect-ratio:1/1;overflow:hidden}
   .sq.l{background:var(--light)} .sq.d{background:var(--dark)}
   .sq.hl::after{content:"";position:absolute;inset:0;background:var(--last);opacity:.45}
   .sq.ha::after{content:"";position:absolute;inset:0;background:var(--alt);opacity:.55}
